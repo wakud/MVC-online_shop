@@ -19,5 +19,9 @@ namespace Rocky_DataAccess.Data
         public DbSet<ApplicationType> ApplicationType { get; set; }
         public DbSet<Product> Product { get; set; }
         public DbSet<ApplicationUser> ApplicationUser { get; set; }
+        public DbSet<InquiryHeader> InquiryHeader { get; set;}
+        public DbSet<InquiryDetails> InquiryDetail { get; set; }
+        public DbSet<OrderDetail> OrderDetail { get; set; }
+        public DbSet<OrderHeader> OrderHeader { get; set; }
     }
 }

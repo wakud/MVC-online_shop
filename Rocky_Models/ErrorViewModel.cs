@@ -1,5 +1,3 @@
-using System;
-
 namespace Rocky_Models
 {
     public class ErrorViewModel

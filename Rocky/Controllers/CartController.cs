@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Braintree;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +16,7 @@ using Rocky_DataAccess.Repository.IRepository;
 using Rocky_Models;
 using Rocky_Models.ViewModels;
 using Rocky_Utility;
+using Rocky_Utility.BrainTree;
 
 namespace Rocky.Controllers
 {
@@ -29,6 +31,7 @@ namespace Rocky.Controllers
         private readonly IInquiryHeaderRepository _inquiryHeaderRepository;
         private readonly IOrderDetailRepository _orderDetailRepository;
         private readonly IOrderHeaderRepository _orderHeaderRepository;
+        private readonly IBrainTreeGate _brain;
 
         [BindProperty]
         public ProductUserVM ProductUserVM { get; set; }
@@ -40,7 +43,8 @@ namespace Rocky.Controllers
             IInquiryDetailRepository inquiryDetailRepository,
             IInquiryHeaderRepository inquiryHeaderRepository,
             IOrderDetailRepository orderDetailRepository,
-            IOrderHeaderRepository orderHeaderRepository
+            IOrderHeaderRepository orderHeaderRepository,
+            IBrainTreeGate brain
             )
         {
             _webHostEnvironment = webHostEnvironment;
@@ -51,6 +55,7 @@ namespace Rocky.Controllers
             _inquiryHeaderRepository = inquiryHeaderRepository;
             _orderDetailRepository = orderDetailRepository;
             _orderHeaderRepository = orderHeaderRepository;
+            _brain = brain;
         }
 
         public IActionResult Index()
@@ -114,6 +119,10 @@ namespace Rocky.Controllers
                 {
                     applicationUser = new ApplicationUser();
                 }
+
+                var gateway = _brain.GetGateway();
+                var clientToken = gateway.ClientToken.Generate();
+                ViewBag.ClientToken = clientToken;
             }
             else
             {
@@ -151,7 +160,7 @@ namespace Rocky.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [ActionName("Summary")]
-        public async Task<IActionResult> SummaryPost(ProductUserVM ProductUserVM)
+        public async Task<IActionResult> SummaryPost(IFormCollection collection, ProductUserVM ProductUserVM)
         {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var claim = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
@@ -192,6 +201,32 @@ namespace Rocky.Controllers
 
                 _orderDetailRepository.Save();
 
+                string nonceFromTheClient = collection["payment_method_nonce"];
+                var request = new TransactionRequest
+                {
+                    Amount = Convert.ToDecimal(orderHeader.FinalOrderTotal),
+                    PaymentMethodNonce = nonceFromTheClient,
+                    OrderId = orderHeader.Id.ToString(),
+                    Options = new TransactionOptionsRequest
+                    {
+                        SubmitForSettlement = true
+                    }
+                };
+                
+                var gateway = _brain.GetGateway();
+                Result<Transaction> result = gateway.Transaction.Sale(request);
+                
+                if (result.Target.ProcessorResponseText == "Approved")
+                {
+                    orderHeader.TransactionId = result.Target.Id;
+                    orderHeader.OrderStatus = WC.StatusApproved;
+                }
+                else
+                {
+                    orderHeader.OrderStatus = WC.StatusCancelled;
+                }
+
+                _orderHeaderRepository.Save();
                 return RedirectToAction(nameof(InquiryConfirmation), new {id=orderHeader.Id});
             }
             else
@@ -206,10 +241,6 @@ namespace Rocky.Controllers
                 {
                     HtmlBody = sr.ReadToEnd();
                 }
-                //Name: { 0}
-                //Email: { 1}
-                //Phone: { 2}
-                //Products: {3}
 
                 StringBuilder productListSB = new();
                 foreach (var prod in ProductUserVM.ProductList)
@@ -291,6 +322,12 @@ namespace Rocky.Controllers
 
             HttpContext.Session.Set(WC.SessionCart, shoppingCartsList);
             return RedirectToAction(nameof(Index));
+        }
+
+        public IActionResult Clear()
+        {
+            HttpContext.Session.Clear();
+            return RedirectToAction("Index", "Home");
         }
     }
 }

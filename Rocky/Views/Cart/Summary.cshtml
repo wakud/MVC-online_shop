@@ -160,7 +160,7 @@
 
 
 @section Scripts{
-    <partial name="_ValidationScriptsPartial" />
+    <partial name="_ValidationScriptsPartial"/>
     <script src="https://js.braintreegateway.com/web/dropin/1.22.1/js/dropin.min.js"></script>
 
     <script>
@@ -168,16 +168,18 @@
         var form = document.querySelector('#payment-form');
         braintree.dropin.create({
                 authorization: clientToken,
-                container: '#dropin-container'},
+                container: '#dropin-container'
+            },
             function(createErr, instanced) {
-                form.addEventListener('submit', function() {
-                    event.preventDefault();
+                form.addEventListener('submit',
+                    function() {
+                        event.preventDefault();
 
-                    instance.requestPaymentMethod(function(err, payload) {
-                        document.querySelector('#nonce').value = payload.nonce;
-                        form.submit();
+                        instance.requestPaymentMethod(function(err, payload) {
+                            document.querySelector('#nonce').value = payload.nonce;
+                            form.submit();
+                        });
                     });
-                });
             });
 
         function validateInput() {
@@ -185,33 +187,27 @@
             var app_email = document.getElementById("ApplicationUser_Email").value;
             var app_phone = document.getElementById("ApplicationUser_PhoneNumber").value;
 
-            if (app_name.toString() == '') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'Please enter Full Name!'
-                });
+            if (app_name.toString().trim() == '') {
+                showError('Please enter Full Name!');
                 return false;
             }
-
-            if (app_email.toString() == '') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'Please enter Email!'
-                });
+            if (app_email.toString().trim() == '') {
+                showError('Please enter Email!');
                 return false;
             }
-
-            if (app_phone.toString() == '') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'Please enter Phone Number!'
-                });
+            if (app_phone.toString().trim() == '') {
+                showError('Please enter Phone Number!');
                 return false;
             }
             return true;
+        }
+
+        function showError(message) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: message
+            });
         }
     </script>
 }

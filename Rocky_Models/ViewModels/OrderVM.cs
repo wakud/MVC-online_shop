@@ -1,7 +1,10 @@
-﻿namespace Rocky_Models.ViewModels
+﻿using System.Collections.Generic;
+
+namespace Rocky_Models.ViewModels
 {
     public class OrderVM
     {
-        public int ID { get; set; }
+        public OrderHeader OrderHeader { get; set; }
+        public IEnumerable<OrderDetail> OrderDetail { get; set; }
     }
 }
